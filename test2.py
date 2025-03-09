@@ -11,7 +11,7 @@ def mouse_callback(event, x, y, flags, param):
         cv2.circle(resized_image, (x, y), 5, (0, 0, 255), -1)  # Red dot
 
 # Load an image
-image_path = r"/mnt/c/Users/nongf/Desktop/CUNEX/IMG20250226133959.jpg"
+image_path = r"/mnt/c/Users/nongf/Desktop/CUNEX/experiment/IMG20250226133959.jpg"
 image = cv2.imread(image_path)
 
 # Check if the image was loaded successfully

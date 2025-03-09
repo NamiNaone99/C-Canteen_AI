@@ -68,7 +68,7 @@ def merge_overlapping_boxes(boxes, threshold=0.3):
 
 # ===============================
 # Load Image
-image_path = "/mnt/c/Users/nongf/Desktop/CUNEX/IMG20250226133959.jpg"
+image_path = "/mnt/c/Users/nongf/Desktop/CUNEX/experiment/IMG20250226133959.jpg"
 image = cv2.imread(image_path)
 if image is None:
     raise FileNotFoundError(f"Error: Image not found at {image_path}")

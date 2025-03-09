@@ -5,7 +5,7 @@ import json
 import os
 from ultralytics import YOLO
 
-# Load image
+# Load image/experiment
 image_path = r"/mnt/c/Users/nongf/Desktop/CUNEX/experiment/IMG20250226133959.jpg"
 image = cv2.imread(image_path)
 if image is None:
@@ -20,45 +20,28 @@ if os.path.exists(table_label_path):
         with open(table_label_path, "r") as f:
             table_boxes = json.load(f)
 
-# Load YOLO model
-model = YOLO("yolov8x.pt")  # Change to yolov11.pt if you have a custom model
+# Load YOLOv12 segmentation model
+model = YOLO("yolo11x-seg")
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
 # Run inference
 results = model(image_path, device=device)
 
-# Extract human detections (class 0 = person)
-human_boxes = []
+# Extract human segmentations (class 0 = person)
+human_masks = []
 human_scores = []
 
 for r in results:
-    for box in r.boxes:
+    for mask, box in zip(r.masks.xy, r.boxes):
         cls = int(box.cls[0])
         score = float(box.conf[0])
         if cls == 0 and score > 0.3:
-            x1, y1, x2, y2 = map(int, box.xyxy[0])
-            human_boxes.append([x1, y1, x2, y2])
+            human_masks.append(mask)
             human_scores.append(score)
 
-if not human_boxes:
+if not human_masks:
     print("No humans detected.")
     exit()
-
-# Merge overlapping boxes
-def merge_overlapping_boxes(boxes, scores, iou_threshold=0.5):
-    # Convert boxes to the correct format for NMSBoxes (they should be a list of boxes)
-    indices = cv2.dnn.NMSBoxes(boxes, scores, score_threshold=0.3, nms_threshold=iou_threshold)
-    
-    # Convert indices to a flat list, as NMSBoxes returns a 2D array
-    if len(indices) > 0:
-        indices = indices.flatten()
-        merged_boxes = [boxes[i] for i in indices]
-        return merged_boxes
-    else:
-        return []
-
-
-human_boxes = merge_overlapping_boxes(human_boxes, human_scores)
 
 # Manual Table Selection
 if not table_boxes:
@@ -95,58 +78,39 @@ if not table_boxes:
     print("No tables defined.")
     exit()
 
-# Association functions
-def compute_intersection_area(box, table):
+# Compute intersection area with masks
+def compute_intersection_area(mask, table):
     mask_table = np.zeros(image.shape[:2], dtype=np.uint8)
-    cv2.fillPoly(mask_table, [np.array(table)], 1)
-    mask_box = np.zeros_like(mask_table)
-    x1, y1, x2, y2 = box
-    cv2.rectangle(mask_box, (x1, y1), (x2, y2), 1, -1)
-    return np.sum(np.logical_and(mask_table, mask_box))
 
-def get_centroid(points):
-    points = np.array(points)
-    if points.shape[0] == 4 and points.ndim == 1:
-        x1, y1, x2, y2 = points
-        return int((x1 + x2) / 2), int((y1 + y2) / 2)
-    else:
-        return tuple(np.mean(points, axis=0, dtype=int))
+    cv2.fillPoly(mask_table, [np.array(table)], 1)
+    mask_human = np.zeros_like(mask_table)
+    cv2.fillPoly(mask_human, [np.array(mask, dtype=np.int32)], 1)
+    return np.sum(np.logical_and(mask_table, mask_human))
 
 # Match humans to tables
 human_to_table = {}
-for i, box in enumerate(human_boxes):
+for i, mask in enumerate(human_masks):
     max_area = 0
     best_idx = -1
     for j, table in enumerate(table_boxes):
-        area = compute_intersection_area(box, table)
+        area = compute_intersection_area(mask, table)
         if area > max_area:
             max_area = area
             best_idx = j
-
-    if best_idx == -1:
-        h_centroid = get_centroid(box)
-        best_idx = min(range(len(table_boxes)),
-                       key=lambda j: np.linalg.norm(np.array(h_centroid) - np.array(get_centroid(table_boxes[j]))))
 
     human_to_table[i] = best_idx
 
 # Visualization
 output = image.copy()
-for i, box in enumerate(human_boxes):
-    x1, y1, x2, y2 = box
-    cv2.rectangle(output, (x1, y1), (x2, y2), (0, 255, 0), 2)
-    h_centroid = get_centroid(box)
-    cv2.circle(output, h_centroid, 5, (255, 0, 0), -1)
+for i, mask in enumerate(human_masks):
+    cv2.polylines(output, [np.array(mask, dtype=np.int32)], True, (0, 255, 0), 2)
     table_idx = human_to_table[i]
-    t_centroid = get_centroid(table_boxes[table_idx])
-    cv2.line(output, h_centroid, t_centroid, (0, 0, 255), 2)
-    cv2.putText(output, f'Table {table_idx}', (x1, y1 - 10),
+    cv2.putText(output, f'Table {table_idx}', tuple(np.array(mask).mean(axis=0, dtype=int)),
                 cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 0, 255), 1)
 
 for idx, table in enumerate(table_boxes):
     cv2.polylines(output, [np.array(table)], True, (255, 255, 0), 2)
-    t_centroid = get_centroid(table)
-    cv2.putText(output, f'Table {idx}', t_centroid,
+    cv2.putText(output, f'Table {idx}', tuple(np.array(table).mean(axis=0, dtype=int)),
                 cv2.FONT_HERSHEY_SIMPLEX, 0.6, (255, 255, 0), 2)
 
 cv2.imshow("Human-Table Association", output)

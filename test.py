@@ -8,7 +8,7 @@ from detectron2.utils.visualizer import Visualizer
 from detectron2.data import MetadataCatalog
 
 # Load an image
-image_path = r"/mnt/c/Users/nongf/Desktop/CUNEX/IMG20250226133959.jpg"
+image_path = r"/mnt/c/Users/nongf/Desktop/CUNEX/experiment/IMG20250226133959.jpg"
 image = cv2.imread(image_path)
 
 # Check if the image was loaded successfully
@@ -17,12 +17,12 @@ if image is None:
 
 # Create config
 cfg = get_cfg()
-cfg.merge_from_file(r"/mnt/c/Users/nongf/Desktop/CUNEX/detectron2/configs/COCO-InstanceSegmentation/mask_rcnn_X_101_32x8d_FPN_3x.yaml")
+cfg.merge_from_file(r"/mnt/c/Users/nongf/Desktop/CUNEX/experiment/detectron2/configs/COCO-InstanceSegmentation/mask_rcnn_X_101_32x8d_FPN_3x.yaml")
 cfg.MODEL.ROI_HEADS.SCORE_THRESH_TEST = 0.1  # Adjust threshold if needed
 cfg.MODEL.ROI_HEADS.NMS_THRESH_TEST = 0.1  # Adjust for more detections
 
 # Load model weights from local path (after manual download)
-cfg.MODEL.WEIGHTS = r"/mnt/c/Users/nongf/Desktop/CUNEX/model_final_2d9806.pkl"
+cfg.MODEL.WEIGHTS = r"/mnt/c/Users/nongf/Desktop/CUNEX/experiment/model_final_2d9806.pkl"
 
 # Ensure CUDA is available, otherwise use CPU
 cfg.MODEL.DEVICE = "cuda" if torch.cuda.is_available() else "cpu"

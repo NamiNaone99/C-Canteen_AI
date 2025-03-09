@@ -14,7 +14,8 @@ from datetime import datetime
 app = FastAPI()
 
 # Load configuration from YAML file
-config_path = r"/mnt/c/Users/nongf/Desktop/CUNEX/config.yaml"
+config_path = r"/mnt/c/Users/nongf/Desktop/CUNEX/experiment/config.yaml"
+
 with open(config_path, 'r') as file:
     config = yaml.safe_load(file)
 
