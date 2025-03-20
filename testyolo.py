@@ -6,7 +6,7 @@ import os
 from ultralytics import YOLO
 
 # Load image
-image_path = r"/mnt/c/Users/nongf/Desktop/CUNEX/experiment/IMG20250226133959.jpg"
+image_path = r"all_frame/frame (1).jpg"
 image = cv2.imread(image_path)
 if image is None:
     raise FileNotFoundError(f"Image not found at {image_path}")
@@ -21,7 +21,7 @@ if os.path.exists(table_label_path):
             table_boxes = json.load(f)
 
 # Load YOLO model
-model = YOLO("yolov8x.pt")  # Change to yolov11.pt if you have a custom model
+model = YOLO("yolo11x.pt")  # Change to yolov11.pt if you have a custom model
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
 # Run inference

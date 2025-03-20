@@ -58,7 +58,7 @@ def merge_overlapping_boxes(boxes, threshold=0.3):
 
 # ===============================
 # Load Image
-image_path = r"/mnt/c/Users/nongf/Desktop/CUNEX/experiment/IMG20250226133959.jpg"
+image_path = r"all_frame/frame (1).jpg"
 image = cv2.imread(image_path)
 original_image = cv2.imread(image_path)
 if original_image is None:
@@ -68,7 +68,7 @@ if image is None:
     raise FileNotFoundError(f"Error: Image not found at {image_path}")
 
 # Load or create table label file
-table_label_path = "table_labels.json"
+table_label_path = "table_labels_1080p.json"
 table_boxes = []
 if os.path.exists(table_label_path):
     use_saved = input("Use saved table labels? (y/n): ")

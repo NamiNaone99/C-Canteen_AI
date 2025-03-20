@@ -68,13 +68,13 @@ def merge_overlapping_boxes(boxes, threshold=0.3):
 
 # ===============================
 # Load Image
-image_path = "/mnt/c/Users/nongf/Desktop/CUNEX/experiment/IMG20250226133959.jpg"
+image_path = "all_frame/frame (1).jpg"
 image = cv2.imread(image_path)
 if image is None:
     raise FileNotFoundError(f"Error: Image not found at {image_path}")
 
 # Load Table Labels
-with open("table_labels.json", "r") as f:
+with open("table_labels_1080p.json", "r") as f:
     table_boxes = json.load(f)
 if not table_boxes:
     print("No table labels found. Exiting.")
@@ -83,10 +83,13 @@ if not table_boxes:
 # ===============================
 # Load Human Detection Model
 cfg = get_cfg()
-cfg.merge_from_file("detectron2/configs/COCO-InstanceSegmentation/mask_rcnn_X_101_32x8d_FPN_3x.yaml")
+
 cfg.MODEL.ROI_HEADS.SCORE_THRESH_TEST = 0.1
 cfg.MODEL.ROI_HEADS.NMS_THRESH_TEST = 0.6
+cfg.merge_from_file("detectron2/configs/COCO-InstanceSegmentation/mask_rcnn_X_101_32x8d_FPN_3x.yaml")
 cfg.MODEL.WEIGHTS = "model_final_2d9806.pkl"
+# cfg.merge_from_file("output/detectron2_config.yaml")
+# cfg.MODEL.WEIGHTS = "output/detectron2_model.pth"
 cfg.MODEL.DEVICE = "cuda" if torch.cuda.is_available() else "cpu"
 
 predictor = DefaultPredictor(cfg)

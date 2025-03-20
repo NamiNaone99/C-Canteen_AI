@@ -53,42 +53,55 @@ async def predict(file: UploadFile = File(...)):
     
     return JSONResponse(content={"number_of_people": num_people})
 
+# ///////////////////////////////////////////////////////////////////////
+mode = "random"
+@app.get("/update_mode/{new_mode}")
+async def update_mode(new_mode: str):
+    global mode
+    if new_mode in ["random", "fixed", "fixed2"]:
+        mode = new_mode
+        return {"message": f"Mode updated to {mode}"}
+    return {"error": "Invalid mode. Use 'random' or 'fixed'."}
+
 @app.get("/get_table")
 async def get_table():
     # Define the number of rows per column
     canteen_name = "icanteen"
     column_constraints = {
-        "A": 12, "B": 12, "C": 6, "D": 5, "E": 4, "F": 3,
+        "A": 7, "B": 7, "C": 6, "D": 5, "E": 4, "F": 3,
         "G": 7, "H": 5, "I": 10, "J": 7, "K": 2
     }
 
-    # Total number of rows
+    # Total number of rows and columns
     total_rows = 12
     total_cols = 11  # Columns from A to K
-    
-    # Initialize the table with empty values
+   
+    # Initialize table data
     table_data = [["-" for _ in range(total_cols)] for _ in range(total_rows)]
 
-    # Assign random values (0-2) according to constraints
-    for col_index, (col_letter, max_rows) in enumerate(column_constraints.items()):
-        for row in range(max_rows):
-            table_data[row][col_index] = random.randint(0, 2)
 
+    fixed_col = "I"
+    fixed_row = 1 
+    #  J3,I4,I5
+    fixed_row = fixed_row - 1
+    if mode == "random":
+        # Assign random values (0-2) according to constraints
+        for col_index, (col_letter, max_rows) in enumerate(column_constraints.items()):
+            for row in range(max_rows):
+                table_data[row][col_index] = random.randint(0, 2)
     # Convert to JSON format with column names as keys, removing "-"
     json_result = {
         col_letter: [table_data[row][col_index] for row in range(column_constraints[col_letter])]
         for col_index, col_letter in enumerate(column_constraints.keys())
     }
 
-    # Add canteen name to the result
+    # Add additional metadata
     json_result["canteen_name"] = canteen_name
-    
-    # Add timestamp to the result
     json_result["timestamp"] = datetime.now().isoformat()
+    json_result["mode"] = mode  # Include the mode in the response
 
     print(json_result)
     return JSONResponse(content=json_result)
-
 
 
 # Predefined canteen IDs
@@ -132,3 +145,4 @@ async def get_density(id: str = Query(None, description="Canteen ID")):
 if __name__ == "__main__":
     import uvicorn
     uvicorn.run("api_AI:app", host="0.0.0.0", port=9925, reload=True)
+    

@@ -5,3 +5,17 @@ detectron2/
 config.yaml
 *.pt
 *.pkl
+*.mp4
+*.avi
+*.png
+*.jpeg
+*.yaml
+*.yml
+frames
+image
+output
+notuse video
+train
+all_frame
+2025-03-19
+*.csv
