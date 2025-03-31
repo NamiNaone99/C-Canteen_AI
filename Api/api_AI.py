@@ -11,49 +11,21 @@ from io import BytesIO
 import yaml
 import random
 from datetime import datetime
+from typing import List
+from pydantic import BaseModel
+
 app = FastAPI()
 
 # Load configuration from YAML file
-config_path = r"/mnt/c/Users/nongf/Desktop/CUNEX/experiment/config.yaml"
+config_path = r"../config.yaml"
 
 with open(config_path, 'r') as file:
     config = yaml.safe_load(file)
 
 # Load an image
-image_path = config['image_path']['image1']
-image = cv2.imread(image_path)
 
-# Create config
-cfg = get_cfg()
-cfg.merge_from_file(config['cfg_file']['cfg1'])
-cfg.MODEL.ROI_HEADS.SCORE_THRESH_TEST = 0.3  # Adjust threshold if needed
-cfg.MODEL.WEIGHTS = config['detectron']['weight']
 
-# Create predictor
-predictor = DefaultPredictor(cfg)
 
-@app.post("/predict")
-async def predict(file: UploadFile = File(...)):
-    # Read image file
-    image_data = await file.read()
-    image = cv2.imdecode(np.frombuffer(image_data, np.uint8), cv2.IMREAD_COLOR)
-
-    # Make prediction
-    outputs = predictor(image)
-    
-    # Get predictions
-    instances = outputs["instances"].to("cpu")
-    pred_classes = instances.pred_classes.numpy()
-    
-    # Filter only human (COCO class "person" = 0)
-    human_indices = [i for i, cls in enumerate(pred_classes) if cls == 0]
-    
-    # Number of people detected
-    num_people = len(human_indices)
-    
-    return JSONResponse(content={"number_of_people": num_people})
-
-# ///////////////////////////////////////////////////////////////////////
 mode = "random"
 @app.get("/update_mode/{new_mode}")
 async def update_mode(new_mode: str):
@@ -103,8 +75,7 @@ async def get_table():
     print(json_result)
     return JSONResponse(content=json_result)
 
-
-# Predefined canteen IDs
+# Simulated canteen mapping
 canteens = {
     "โรงอาหารวิศวะ": "ChIJO0JPydWe4jARBaNUvkc8qqU",
     "โรงอาหารเศรษฐศาสตร์": "ChIJz_D_b2Cf4jARIkQ7--r8C5E",
@@ -121,8 +92,12 @@ canteens = {
     "โรงอาหารหอกลาง": "ChIJh3kgQSuZ4jARhyg4QOxSXpI"
 }
 
-@app.get("/get_density")
-async def get_density(id: str = Query(None, description="Canteen ID")):
+# Pydantic model for request body
+class CanteenIDs(BaseModel):
+    ids: List[str]
+
+@app.post("/get_density")
+async def get_density(data: CanteenIDs):
     def generate_density_data(canteen_name, canteen_id):
         return {
             "density": random.randint(0, 200),
@@ -131,16 +106,17 @@ async def get_density(id: str = Query(None, description="Canteen ID")):
             "timestamp": datetime.now().isoformat()
         }
 
-    if id:
-        # Find the canteen with the given ID
+    results = []
+    for query_id in data.ids:
+        found = False
         for canteen_name, canteen_id in canteens.items():
-            if canteen_id == id:
-                return JSONResponse(content=generate_density_data(canteen_name, canteen_id))
-        return JSONResponse(content={"error": "Canteen ID not found"}, status_code=404)
-    else:
-        # Return all canteens with random densities
-        data = [generate_density_data(name, canteen_id) for name, canteen_id in canteens.items()]
-        return JSONResponse(content=data)
+            if canteen_id == query_id:
+                results.append(generate_density_data(canteen_name, canteen_id))
+                found = True
+                break
+        if not found:
+            results.append({"error": f"Canteen ID '{query_id}' not found"})
+    return JSONResponse(content=results)
 
 if __name__ == "__main__":
     import uvicorn

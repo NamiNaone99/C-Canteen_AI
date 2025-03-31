@@ -6,7 +6,7 @@ import os
 from ultralytics import YOLO
 
 # Load image
-image_path = r"all_frame/frame (1).jpg"
+image_path = r"/mnt/c/Users/nongf/Desktop/CUNEX/experiment/IMG20250226133959.jpg"
 image = cv2.imread(image_path)
 if image is None:
     raise FileNotFoundError(f"Image not found at {image_path}")

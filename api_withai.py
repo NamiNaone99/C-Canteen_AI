@@ -15,8 +15,8 @@ from fastapi.responses import JSONResponse
 
 # ===============================
 # CONFIGURATION
-RTSP_URL = "rtsp://admin:Password%401@"  # Replace with your RTSP URL
-FRAME_SKIP_INTERVAL = 5  # Process every 5 seconds
+RTSP_URL = "rtsp://admin:Password@1@192.168.0.65:554/Streaming/Channels/101/"  # Replace with your RTSP URL
+FRAME_SKIP_INTERVAL = 1  # Process every 5 seconds
 CSV_FILE = "table_occupancy_log.csv"
 OVERLAP_THRESHOLD = 0.3
 
@@ -41,10 +41,15 @@ table_mapping = generate_table_mapping()
 # ===============================
 # AI MODEL LOADING
 cfg = get_cfg()
-cfg.merge_from_file("detectron2/configs/COCO-InstanceSegmentation/mask_rcnn_X_101_32x8d_FPN_3x.yaml")
-cfg.MODEL.WEIGHTS = "model_final_2d9806.pkl"
-cfg.MODEL.ROI_HEADS.SCORE_THRESH_TEST = 0.1
-cfg.MODEL.ROI_HEADS.NMS_THRESH_TEST = 0.6
+
+cfg.merge_from_file("output/detectron2_config.yaml")
+cfg.MODEL.WEIGHTS = "output/model_final.pth"
+
+# cfg.merge_from_file("detectron2/configs/COCO-InstanceSegmentation/mask_rcnn_X_101_32x8d_FPN_3x.yaml")
+# cfg.MODEL.WEIGHTS = "model_final_2d9806.pkl"
+
+cfg.MODEL.ROI_HEADS.SCORE_THRESH_TEST = 0.5
+cfg.MODEL.ROI_HEADS.NMS_THRESH_TEST = 0.7
 cfg.MODEL.DEVICE = "cuda" if torch.cuda.is_available() else "cpu"
 
 predictor = DefaultPredictor(cfg)
@@ -74,14 +79,24 @@ def avg_distance_to_table(human_box, table):
     table_points = np.array(table)
     distances = [min([cv2.norm(np.array(h) - np.array(t), cv2.NORM_L2) for t in table_points]) for h in human_points]
     return np.mean(distances)
+def ensure_csv_exists():
+    if not os.path.exists(CSV_FILE):
+        with open(CSV_FILE, mode="w", newline="") as file:
+            writer = csv.writer(file)
+            # Create the header with timestamp and table labels
+            header = ["timestamp"] + list(table_mapping.values())
+            writer.writerow(header)
+
 def process_frame(frame):
+    ensure_csv_exists()  # Ensure CSV exists before writing data
     outputs = predictor(frame)
     instances = outputs["instances"].to("cpu")
     pred_classes = instances.pred_classes.numpy()
     pred_boxes = instances.pred_boxes.tensor.numpy()
 
     # Filter only humans (COCO class "person" = 0)
-    human_indices = np.where(pred_classes == 0)[0]
+    # Filter Humans Only///////////////Change class number here trained model and pretrained model is not the same
+    human_indices = np.where(pred_classes == 1)[0]
     human_boxes = pred_boxes[human_indices]
 
     # Map humans to tables
@@ -89,8 +104,8 @@ def process_frame(frame):
     human_assignments = {}
 
     # Draw table polygons
-    for table in table_boxes:
-        cv2.polylines(frame, [np.array(table, dtype=np.int32)], isClosed=True, color=(0, 255, 0), thickness=2)
+    # for table in table_boxes:
+    #     cv2.polylines(frame, [np.array(table, dtype=np.int32)], isClosed=True, color=(0, 255, 0), thickness=2)
 
     # Draw human bounding boxes
     for human_box in human_boxes:
@@ -143,11 +158,17 @@ def process_frame(frame):
 
     return frame, table_counts
 
+
 # ===============================
 # RUNNING AI ON RTSP
 def run_ai_on_rtsp():
-    cap = cv2.VideoCapture('2025-03-19/192.168.0.67_01_20250319125958359_9.mp4')
-
+    # cap = cv2.VideoCapture(RTSP_URL)
+    gst_pipeline = (
+        f"rtspsrc location={RTSP_URL} ! "
+        "rtph264depay ! h264parse ! avdec_h264 ! videoconvert ! appsink"
+    )
+    # cap = cv2.VideoCapture(gst_pipeline, cv2.CAP_GSTREAMER)
+    cap = cv2.VideoCapture("/media/noboru/Windows/Users/nongf/Downloads/Cunex_video/2025-03-19/192.168.0.67_01_20250319121855674.mp4")
     if not cap.isOpened():
         print("Error: Cannot open RTSP stream")
         return
@@ -179,7 +200,6 @@ def run_ai_on_rtsp():
 # ===============================
 # API
 app = FastAPI()
-
 @app.get("/get_table")
 async def get_latest_data():
     try:
@@ -187,13 +207,22 @@ async def get_latest_data():
         if df.empty:
             return JSONResponse(content={"error": "No data available"}, status_code=404)
 
-        latest_entry = df.iloc[-1]
-        timestamp = latest_entry[0]
-        table_data = dict(zip(table_mapping.values(), latest_entry[1:].tolist()))
+        latest_entry = df.iloc[-1].fillna(-1)
+        timestamp = latest_entry[0]  # Extract timestamp
+        
+        # Group columns by their prefix (A, B, C, etc.) and create lists
+        table_data = {}
+        for col in df.columns[1:]:  # Skip timestamp column
+            table_label = col[0]  # The first letter of the column name
+            if table_label not in table_data:
+                table_data[table_label] = []
+            table_data[table_label].append(int(latest_entry[col]))
 
+        # Format the response as required
         response = {
+            **table_data,  # Spread table data keys into the response
+            "canteen_name": "icanteen",
             "timestamp": timestamp,
-            "tables": table_data
         }
         return JSONResponse(content=response)
 
@@ -209,4 +238,4 @@ if __name__ == "__main__":
     # Run AI in a separate thread
     ai_thread = Thread(target=run_ai_on_rtsp)
     ai_thread.start()
-    uvicorn.run("api_withai:app", host="0.0.0.0", port=9925, reload=True)
+    uvicorn.run("api_withai:app", host="0.0.0.0", port=9926, reload=True)

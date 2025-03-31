@@ -19,3 +19,14 @@ train
 all_frame
 2025-03-19
 *.csv
+*.zip
+human-dataset/
+datasets
+*.log
+*.txt
+*.json
+*.xml
+*.pyc
+*.pyo
+*.pyd
+

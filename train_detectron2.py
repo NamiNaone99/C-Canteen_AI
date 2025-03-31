@@ -9,7 +9,7 @@ import requests
 import zipfile
 
 
-dataset_url = "https://app.roboflow.com/ds/LMYJYiPjBO?key=6ABhuG8Fup"
+dataset_url = "https://app.roboflow.com/ds/cxnSAc1zDk?key=4eKN2wUaVM"
 dataset_path = "human-dataset.zip"
 extract_path = "human-dataset"
 
@@ -44,7 +44,7 @@ cfg.MODEL.WEIGHTS = "model_final_2d9806.pkl"
 cfg.MODEL.DEVICE = "cuda" if torch.cuda.is_available() else "cpu"
 cfg.SOLVER.IMS_PER_BATCH = 2
 cfg.SOLVER.BASE_LR = 0.00025
-cfg.SOLVER.MAX_ITER = 2000  # Adjust iterations as needed
+cfg.SOLVER.MAX_ITER = 3000  # Adjust iterations as needed
 cfg.MODEL.ROI_HEADS.BATCH_SIZE_PER_IMAGE = 512  # Adjust based on memory
 
 # Initialize Trainer
@@ -57,3 +57,4 @@ os.makedirs("output", exist_ok=True)
 torch.save(trainer.model.state_dict(), "output/detectron2_model.pth")
 with open("output/detectron2_config.yaml", "w") as f:
     f.write(cfg.dump())  # Save configuration
+print("Model saved!")

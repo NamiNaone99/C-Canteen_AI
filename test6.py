@@ -68,7 +68,7 @@ def merge_overlapping_boxes(boxes, threshold=0.3):
 
 # ===============================
 # Load Image
-image_path = "all_frame/frame (1).jpg"
+image_path = "human-dataset/test/frame-2-_jpg.rf.168527ba4fdaf9c9a6bba2b2a0786064.jpg"
 image = cv2.imread(image_path)
 if image is None:
     raise FileNotFoundError(f"Error: Image not found at {image_path}")
@@ -86,6 +86,8 @@ cfg = get_cfg()
 
 cfg.MODEL.ROI_HEADS.SCORE_THRESH_TEST = 0.1
 cfg.MODEL.ROI_HEADS.NMS_THRESH_TEST = 0.6
+# cfg.merge_from_file("output/detectron2_config.yaml")
+# cfg.MODEL.WEIGHTS = "output/model_final.pth"
 cfg.merge_from_file("detectron2/configs/COCO-InstanceSegmentation/mask_rcnn_X_101_32x8d_FPN_3x.yaml")
 cfg.MODEL.WEIGHTS = "model_final_2d9806.pkl"
 # cfg.merge_from_file("output/detectron2_config.yaml")
@@ -97,9 +99,9 @@ outputs = predictor(image)
 instances = outputs["instances"].to("cpu")
 pred_classes = instances.pred_classes.numpy()
 pred_boxes = instances.pred_boxes.tensor.numpy()
-
+print(pred_classes)
 # ===============================
-# Filter Humans Only
+# Filter Humans Only///////////////Change class number here trained model and pretrained model is not the same
 human_indices = np.where(pred_classes == 0)[0]
 human_boxes = pred_boxes[human_indices]
 merged_human_boxes = merge_overlapping_boxes(human_boxes, threshold=OVERLAP_THRESHOLD)
@@ -141,7 +143,7 @@ for i, box in enumerate(merged_human_boxes):
     if human_to_table_map[i] != -1:
         table_centroid = get_centroid(table_boxes[human_to_table_map[i]])
         cv2.line(output_image, human_centroid, table_centroid, (0, 255, 0), 2)
-        cv2.putText(output_image, f"Person {i} -> Table {human_to_table_map[i]}", (10, 30 + i * 30), cv2.FONT_HERSHEY_SIMPLEX, 0.6, (255, 0, 0), 2)
+        # cv2.putText(output_image, f"Person {i} -> Table {human_to_table_map[i]}", (10, 30 + i * 30), cv2.FONT_HERSHEY_SIMPLEX, 0.6, (255, 0, 0), 2)
 
 cv2.imshow("Human-Table Mapping", output_image)
 cv2.waitKey(0)
